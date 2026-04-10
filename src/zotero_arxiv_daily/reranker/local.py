@@ -19,7 +19,15 @@ class LocalReranker(BaseReranker):
             logging.getLogger("huggingface_hub.utils._http").setLevel(logging.ERROR)
             warnings.filterwarnings("ignore", category=FutureWarning)
 
-        encoder = SentenceTransformer(self.config.reranker.local.model, trust_remote_code=True)
+        model_name = self.config.reranker.local.model
+        try:
+            encoder = SentenceTransformer(model_name, trust_remote_code=True)
+        except TypeError as exc:
+            # Compatibility fallback for model wrappers that pass trust_remote_code
+            # downstream and can trigger duplicate keyword errors.
+            if "multiple values for keyword argument 'trust_remote_code'" not in str(exc):
+                raise
+            encoder = SentenceTransformer(model_name)
         if self.config.reranker.local.encode_kwargs:
             encode_kwargs = self.config.reranker.local.encode_kwargs
         else:
